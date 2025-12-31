@@ -3,112 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rise of Kingdoms: Avant-Garde</title>
+    <title>Rise of Kingdoms 3D | Avant-Garde</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', sans-serif;
-            background-color: #050505;
-            color: white;
-            user-select: none;
-            overflow: hidden;
-        }
-
-        /* Glassmorphism UI Effects */
-        .glass-panel {
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
-        }
-
-        .commander-card {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .commander-card:hover {
-            border-color: rgba(255, 255, 255, 0.4);
-            transform: translateY(-2px);
-        }
-
-        canvas {
-            display: block;
-            cursor: crosshair;
-        }
+        body { margin: 0; background: #050505; color: white; font-family: 'Inter', sans-serif; overflow: hidden; }
+        canvas { display: block; }
+        .ui-overlay { pointer-events: none; position: fixed; inset: 0; z-index: 10; }
+        .pointer-auto { pointer-events: auto; }
+        .glass { background: rgba(0,0,0,0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
     </style>
 </head>
-<body class="antialiased">
+<body>
 
-    <nav class="fixed top-0 left-0 w-full z-20 p-6 pointer-events-none">
-        <div class="flex justify-between items-start max-w-[1920px] mx-auto">
-            <div class="glass-panel rounded-2xl px-6 py-3 flex gap-8 pointer-events-auto">
-                <div class="flex flex-col">
-                    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Altın</span>
-                    <span id="gold-val" class="text-xl font-black text-yellow-500">12,500</span>
-                </div>
+    <div class="ui-overlay p-6 flex flex-col justify-between">
+        <div class="flex justify-between items-start">
+            <div class="glass p-4 rounded-2xl flex gap-6 pointer-auto">
+                <div><p class="text-[10px] text-gray-500 font-bold uppercase">Altın</p><p id="gold" class="text-xl font-black text-yellow-500">25.0K</p></div>
                 <div class="w-[1px] h-10 bg-white/10"></div>
-                <div class="flex flex-col">
-                    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Odun</span>
-                    <span id="wood-val" class="text-xl font-black text-green-500">8,200</span>
-                </div>
+                <div><p class="text-[10px] text-gray-500 font-bold uppercase">Odun</p><p id="wood" class="text-xl font-black text-green-500">18.2K</p></div>
             </div>
-
-            <div class="glass-panel rounded-2xl px-6 py-4 pointer-events-auto flex items-center gap-4">
-                <div class="text-right">
-                    <p class="text-[10px] text-gray-400 leading-none mb-1 uppercase tracking-tighter">Krallık Durumu</p>
-                    <p class="text-sm font-bold text-white tracking-widest">AKTİF SEFER</p>
-                </div>
-                <div class="w-3 h-3 bg-red-600 rounded-full animate-pulse"></div>
-            </div>
-        </div>
-    </nav>
-
-    <aside class="fixed left-6 top-32 z-20 flex flex-col gap-3 pointer-events-none">
-        <h2 class="text-[10px] text-white/40 font-black uppercase tracking-[0.3em] ml-2 mb-2">Komutanlar</h2>
-        
-        <div class="commander-card glass-panel p-3 rounded-xl flex items-center gap-4 w-48 pointer-events-auto border-l-4 border-l-red-500">
-            <div class="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center font-bold text-red-500">M</div>
-            <div>
-                <p class="text-xs font-black">MURAT</p>
-                <p class="text-[9px] text-gray-400">Piyade Ustası</p>
+            <div class="glass px-6 py-3 rounded-full pointer-auto">
+                <span class="text-xs font-bold tracking-widest text-red-500">● CANLI SEFER</span>
             </div>
         </div>
 
-        <div class="commander-card glass-panel p-3 rounded-xl flex items-center gap-4 w-48 pointer-events-auto border-l-4 border-l-pink-500 opacity-60">
-            <div class="w-10 h-10 bg-pink-500/20 rounded-lg flex items-center justify-center font-bold text-pink-500">C</div>
-            <div>
-                <p class="text-xs font-black text-gray-300">CANSU</p>
-                <p class="text-[9px] text-gray-500">Hızlı Akıncı</p>
+        <div class="flex justify-center mb-4">
+            <div class="glass px-8 py-4 rounded-full flex gap-8 pointer-auto items-center">
+                <div class="text-center">
+                    <p id="selected-name" class="text-xs font-black tracking-tighter text-gray-400">KOMUTAN SEÇİLMEDİ</p>
+                    <p id="selected-skill" class="text-[9px] text-gray-600 uppercase">Emir bekleniyor...</p>
+                </div>
             </div>
         </div>
-    </aside>
-
-    <footer class="fixed bottom-8 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
-        <div class="glass-panel px-8 py-4 rounded-full flex gap-10 items-center">
-            <button class="group flex flex-col items-center gap-1 opacity-50 hover:opacity-100 transition-all">
-                <div class="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-black">
-                    <span class="text-xs font-bold">A</span>
-                </div>
-                <span class="text-[9px] font-bold tracking-widest">SALDIR</span>
-            </button>
-            <button class="group flex flex-col items-center gap-1 opacity-50 hover:opacity-100 transition-all">
-                <div class="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-black">
-                    <span class="text-xs font-bold">S</span>
-                </div>
-                <span class="text-[9px] font-bold tracking-widest">SAVUN</span>
-            </button>
-            <button class="group flex flex-col items-center gap-1 opacity-50 hover:opacity-100 transition-all">
-                <div class="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-black">
-                    <span class="text-xs font-bold">H</span>
-                </div>
-                <span class="text-[9px] font-bold tracking-widest">HASAT</span>
-            </button>
-        </div>
-    </footer>
+    </div>
 
     <canvas id="gameCanvas"></canvas>
 
