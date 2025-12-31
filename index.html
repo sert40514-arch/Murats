@@ -4,115 +4,74 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Rise of Kingdoms 3D | Senior Arch</title>
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
-    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;600;900&display=swap');
-
-        body, html { 
-            margin: 0; padding: 0; width: 100%; height: 100%; 
-            overflow: hidden; background: #000;
-            font-family: 'Inter', sans-serif;
-            color: white;
-        }
-
-        canvas { display: block; touch-action: none; }
-
-        /* HUD Layer */
-        #ui-root {
-            position: fixed; inset: 0; pointer-events: none; z-index: 50;
-            display: flex; flex-direction: column; justify-content: space-between;
-            padding: 1.5rem;
-        }
-
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #050505; color: white; font-family: 'Inter', sans-serif; }
+        canvas { display: block; touch-action: none; position: absolute; top: 0; left: 0; }
+        
+        /* UI Katmanları */
+        #ui-root { position: fixed; inset: 0; pointer-events: none; z-index: 100; display: flex; flex-direction: column; justify-content: space-between; padding: 1.5rem; }
+        #label-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+        
         .pointer-auto { pointer-events: auto; }
-
-        /* Avant-Garde Glassmorphism */
-        .glass {
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 1.25rem;
+        .glass { background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1.25rem; }
+        
+        /* Yüzen İsim Etiketi Stili */
+        .floating-label {
+            position: absolute; transform: translate(-50%, -100%);
+            padding: 4px 12px; border-radius: 4px; background: rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.2); font-size: 10px; font-weight: 900;
+            white-space: nowrap; pointer-events: none; letter-spacing: 1px;
         }
 
-        /* Loading Screen */
-        #loader {
-            position: fixed; inset: 0; z-index: 100; background: #050505;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
-
-        .loader-text {
-            font-weight: 900; letter-spacing: 0.5em;
-            background: linear-gradient(to right, #fbbf24, #fff, #fbbf24);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-size: 200% auto;
-            animation: shine 3s linear infinite;
-        }
-
-        @keyframes shine {
-            to { background-position: 200% center; }
-        }
-
-        /* Selection Card Animation */
-        #selection-card {
-            transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
-        }
-
+        #loader { position: fixed; inset: 0; z-index: 200; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.8s ease; }
+        .loader-text { font-weight: 900; letter-spacing: 0.5em; color: #fbbf24; }
+        #selection-card { transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1); }
         .hide-card { transform: translateY(150%); }
         .show-card { transform: translateY(0); }
     </style>
 </head>
 <body>
-
     <div id="loader">
-        <h1 class="loader-text text-2xl mb-6">KINGDOM LOADING</h1>
+        <h1 class="loader-text text-xl mb-4 italic text-center">CONSTRUCTING<br>KINGDOM</h1>
         <div class="w-64 h-1 bg-white/10 rounded-full overflow-hidden">
             <div id="progress" class="h-full bg-yellow-500 w-0 transition-all duration-300"></div>
         </div>
     </div>
 
+    <div id="label-container"></div>
+
     <div id="ui-root">
         <header class="flex justify-between items-start">
-            <div class="glass p-4 flex gap-8 pointer-auto">
-                <div><p class="text-[10px] text-white/40 font-bold uppercase">Gold</p><p id="gold-ui" class="text-xl font-black text-yellow-500">25.4K</p></div>
+            <div class="glass p-4 flex gap-6 pointer-auto">
+                <div><p class="text-[9px] text-white/40 font-bold uppercase">Gold</p><p id="gold-ui" class="text-lg font-black text-yellow-500">25.4K</p></div>
                 <div class="w-[1px] h-8 bg-white/10"></div>
-                <div><p class="text-[10px] text-white/40 font-bold uppercase">Wood</p><p id="wood-ui" class="text-xl font-black text-green-500">12.1K</p></div>
+                <div><p class="text-[9px] text-white/40 font-bold uppercase">Wood</p><p id="wood-ui" class="text-lg font-black text-green-500">12.1K</p></div>
             </div>
-            
-            <div class="glass px-6 py-4 pointer-auto">
-                <p id="coords-ui" class="text-xs font-mono text-white/60 tracking-widest uppercase italic">Search: X0, Z0</p>
-            </div>
+            <div class="glass px-4 py-3 pointer-auto text-[10px] font-mono text-white/60 tracking-tighter uppercase" id="coords-ui">MAP START</div>
         </header>
 
-        <div class="flex justify-center mb-8">
-            <div id="selection-card" class="glass p-8 w-[400px] pointer-auto hide-card border-t-2 border-yellow-500/50">
-                <div class="flex justify-between items-end mb-4">
+        <div class="flex justify-center mb-6">
+            <div id="selection-card" class="glass p-6 w-[350px] pointer-auto hide-card border-b-4 border-yellow-500">
+                <div class="flex justify-between items-start mb-4">
                     <div>
-                        <h2 id="commander-name" class="text-3xl font-black tracking-tighter">MURAT</h2>
-                        <p id="commander-skill" class="text-xs text-white/40 uppercase tracking-widest mt-1">Piyade Ustası</p>
+                        <h2 id="commander-name" class="text-2xl font-black tracking-tighter uppercase leading-none italic">MURAT</h2>
+                        <p id="commander-skill" class="text-[10px] text-white/40 font-bold uppercase tracking-widest mt-2">Piyade Ustası</p>
                     </div>
-                    <span class="text-xs font-bold border border-white/20 px-2 py-1 rounded">LVL 60</span>
+                    <span class="text-[10px] bg-yellow-500 text-black px-2 py-1 rounded font-black italic shadow-lg shadow-yellow-500/20">LVL 60</span>
                 </div>
-                
-                <div class="h-[1px] bg-white/5 my-4"></div>
-                
-                <p id="commander-desc" class="text-sm text-white/60 leading-relaxed mb-6 italic">
-                    Yetenek açıklaması buraya gelecek.
-                </p>
-                
-                <div class="grid grid-cols-2 gap-4">
-                    <button class="bg-white/5 hover:bg-white/10 py-3 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] transition-all">Strateji</button>
-                    <button class="bg-yellow-500 hover:bg-yellow-400 py-3 rounded-lg text-[10px] font-black text-black uppercase tracking-[0.2em] transition-all">Konuşlandır</button>
+                <p id="commander-desc" class="text-xs text-white/60 leading-relaxed mb-6 italic opacity-80">Yetenekler yükleniyor...</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <button class="bg-white/5 border border-white/10 hover:bg-white/10 py-3 rounded text-[10px] font-black uppercase tracking-widest transition-all italic">Geliştir</button>
+                    <button class="bg-yellow-500 hover:bg-yellow-400 py-3 rounded text-[10px] font-black text-black uppercase tracking-widest transition-all italic shadow-xl shadow-yellow-500/10">Savaşa Gönder</button>
                 </div>
             </div>
         </div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
-
     <script type="module" src="./src/main.js"></script>
 </body>
 </html>
