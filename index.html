@@ -3,115 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rise of Kingdoms: Avant-Garde 3D</title>
+    <title>Rise of Kingdoms 3D | Senior Arch</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
     
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Inter:wght@300;600;900&display=swap');
-
-        :root {
-            --primary: #fbbf24;
-            --glass: rgba(0, 0, 0, 0.75);
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;600;900&display=swap');
 
         body, html { 
             margin: 0; padding: 0; width: 100%; height: 100%; 
             overflow: hidden; background: #000;
             font-family: 'Inter', sans-serif;
+            color: white;
         }
 
         canvas { display: block; touch-action: none; }
 
-        /* Avant-Garde UI Styling */
-        .game-ui {
+        /* HUD Layer */
+        #ui-root {
             position: fixed; inset: 0; pointer-events: none; z-index: 50;
-            display: flex; flex-col; justify-content: space-between; padding: 1.5rem;
+            display: flex; flex-direction: column; justify-content: space-between;
+            padding: 1.5rem;
         }
 
         .pointer-auto { pointer-events: auto; }
 
-        .glass-panel {
-            background: var(--glass);
-            backdrop-filter: blur(15px);
+        /* Avant-Garde Glassmorphism */
+        .glass {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 1rem;
-        }
-
-        .commander-label {
-            font-family: 'Syncopate', sans-serif;
-            letter-spacing: 0.2em;
+            border-radius: 1.25rem;
         }
 
         /* Loading Screen */
         #loader {
-            position: fixed; inset: 0; z-index: 100; background: #000;
+            position: fixed; inset: 0; z-index: 100; background: #050505;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: opacity 0.5s ease;
         }
 
-        .shimmer {
-            background: linear-gradient(90deg, #000, #fbbf24, #000);
-            background-size: 200% 100%;
-            animation: shimmer 2s infinite;
+        .loader-text {
+            font-weight: 900; letter-spacing: 0.5em;
+            background: linear-gradient(to right, #fbbf24, #fff, #fbbf24);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            background-size: 200% auto;
+            animation: shine 3s linear infinite;
         }
 
-        @keyframes shimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
+        @keyframes shine {
+            to { background-position: 200% center; }
         }
+
+        /* Selection Card Animation */
+        #selection-card {
+            transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        .hide-card { transform: translateY(150%); }
+        .show-card { transform: translateY(0); }
     </style>
 </head>
 <body>
 
     <div id="loader">
-        <h1 class="text-4xl font-black shimmer italic">LOADING KINGDOM</h1>
-        <div class="w-48 h-1 bg-white/10 mt-4 rounded-full overflow-hidden">
+        <h1 class="loader-text text-2xl mb-6">KINGDOM LOADING</h1>
+        <div class="w-64 h-1 bg-white/10 rounded-full overflow-hidden">
             <div id="progress" class="h-full bg-yellow-500 w-0 transition-all duration-300"></div>
         </div>
     </div>
 
-    <div class="game-ui">
+    <div id="ui-root">
         <header class="flex justify-between items-start">
-            <div class="glass-panel p-4 flex gap-8 pointer-auto">
-                <div class="flex flex-col">
-                    <span class="text-[10px] text-yellow-500/50 font-black uppercase tracking-widest">Altın</span>
-                    <span id="gold-ui" class="text-xl font-bold text-yellow-500">25,400</span>
-                </div>
-                <div class="w-[1px] h-10 bg-white/10"></div>
-                <div class="flex flex-col">
-                    <span class="text-[10px] text-green-500/50 font-black uppercase tracking-widest">Odun</span>
-                    <span id="wood-ui" class="text-xl font-bold text-green-500">12,150</span>
-                </div>
+            <div class="glass p-4 flex gap-8 pointer-auto">
+                <div><p class="text-[10px] text-white/40 font-bold uppercase">Gold</p><p id="gold-ui" class="text-xl font-black text-yellow-500">25.4K</p></div>
+                <div class="w-[1px] h-8 bg-white/10"></div>
+                <div><p class="text-[10px] text-white/40 font-bold uppercase">Wood</p><p id="wood-ui" class="text-xl font-black text-green-500">12.1K</p></div>
             </div>
-
-            <div class="glass-panel px-6 py-4 pointer-auto text-right">
-                <p class="text-[10px] text-white/30 font-bold uppercase">Krallık Koordinatları</p>
-                <p id="coords-ui" class="text-xs font-mono text-white/80">X: 0, Z: 0</p>
+            
+            <div class="glass px-6 py-4 pointer-auto">
+                <p id="coords-ui" class="text-xs font-mono text-white/60 tracking-widest uppercase italic">Search: X0, Z0</p>
             </div>
         </header>
 
-        <footer class="flex justify-center">
-            <div id="selection-card" class="glass-panel p-6 w-80 translate-y-32 transition-transform duration-500 pointer-auto border-b-4 border-yellow-500">
-                <div class="flex justify-between items-center mb-2">
-                    <h2 id="commander-name" class="commander-label text-lg font-bold text-white">MURAT</h2>
-                    <span class="text-[10px] bg-yellow-500 text-black px-2 py-0.5 font-black rounded">LVL 60</span>
+        <div class="flex justify-center mb-8">
+            <div id="selection-card" class="glass p-8 w-[400px] pointer-auto hide-card border-t-2 border-yellow-500/50">
+                <div class="flex justify-between items-end mb-4">
+                    <div>
+                        <h2 id="commander-name" class="text-3xl font-black tracking-tighter">MURAT</h2>
+                        <p id="commander-skill" class="text-xs text-white/40 uppercase tracking-widest mt-1">Piyade Ustası</p>
+                    </div>
+                    <span class="text-xs font-bold border border-white/20 px-2 py-1 rounded">LVL 60</span>
                 </div>
-                <p id="commander-skill" class="text-xs text-white/50 italic mb-4">Piyade birliklerine %20 saldırı bonusu verir.</p>
-                <div class="grid grid-cols-2 gap-2">
-                    <button class="bg-white/5 hover:bg-white/10 py-2 rounded text-[10px] font-black uppercase tracking-widest transition-colors">Yetenekler</button>
-                    <button class="bg-yellow-500 hover:bg-yellow-400 py-2 rounded text-[10px] font-black text-black uppercase tracking-widest transition-colors">Konuşlandır</button>
+                
+                <div class="h-[1px] bg-white/5 my-4"></div>
+                
+                <p id="commander-desc" class="text-sm text-white/60 leading-relaxed mb-6 italic">
+                    Yetenek açıklaması buraya gelecek.
+                </p>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <button class="bg-white/5 hover:bg-white/10 py-3 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] transition-all">Strateji</button>
+                    <button class="bg-yellow-500 hover:bg-yellow-400 py-3 rounded-lg text-[10px] font-black text-black uppercase tracking-[0.2em] transition-all">Konuşlandır</button>
                 </div>
             </div>
-        </footer>
+        </div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
 
     <script type="module" src="./src/main.js"></script>
-
 </body>
 </html>
