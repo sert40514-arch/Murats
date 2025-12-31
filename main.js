@@ -1,165 +1,148 @@
 /**
- * ROK CLONE - COMMANDER & UNIT SYSTEM
- * Role: Senior Frontend Architect
+ * ROK CLONE 3D - MODERN WEBGL ENGINE
+ * Role: Senior Frontend Architect & 3D Engineer
  */
 
-// 1. KOMUTAN VERİ TABANI (Registry)
-const COMMANDERS = {
-    MURAT:     { name: "Murat",    color: "#ef4444", skill: "Piyade Ustası", speedMod: 1.0 }, // Kırmızı
-    CANSU:     { name: "Cansu",    color: "#ec4899", skill: "Hızlı Akıncı",  speedMod: 1.8 }, // Pembe
-    GOKDENIZ:  { name: "Gökdeniz", color: "#3b82f6", skill: "Kuşatma Uzmanı", speedMod: 0.8 }, // Mavi
-    SERIFE:    { name: "Şerife",   color: "#10b981", skill: "Bilge Savunucu", speedMod: 1.2 }, // Yeşil
-    CAN:       { name: "Can",      color: "#f59e0b", skill: "Altın Lider",    speedMod: 1.4 }, // Turuncu
-    SAHILIN:   { name: "Sahilin",  color: "#8b5cf6", skill: "Mistik Gözcü",  speedMod: 1.6 }  // Mor
+// 1. KOMUTAN VE DÜNYA AYARLARI
+const COMMANDER_DATA = {
+    MURAT: { name: "Murat", color: 0xef4444, speed: 0.1 },
+    CANSU: { name: "Cansu", color: 0xec4899, speed: 0.18 },
+    GOKDENIZ: { name: "Gökdeniz", color: 0x3b82f6, speed: 0.08 },
+    SERIFE: { name: "Şerife", color: 0x10b981, speed: 0.12 },
+    CAN: { name: "Can", color: 0xf59e0b, speed: 0.14 },
+    SAHILIN: { name: "Sahilin", color: 0x8b5cf6, speed: 0.16 }
 };
 
-// 2. ENTITY & COMMANDER CLASS
-class Unit {
-    constructor(id, x, y, commanderKey) {
-        const config = COMMANDERS[commanderKey];
-        this.id = id;
-        this.x = x;
-        this.y = y;
-        this.name = config.name;
-        this.color = config.color;
-        this.skill = config.skill;
-        this.speed = 3 * config.speedMod;
-        
-        this.targetX = x;
-        this.targetY = y;
-        this.isSelected = false;
-        this.radius = 18;
-    }
-
-    update() {
-        const dx = this.targetX - this.x;
-        const dy = this.targetY - this.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        if (dist > 2) {
-            this.x += (dx / dist) * this.speed;
-            this.y += (dy / dist) * this.speed;
-        }
-    }
-
-    draw(ctx, camera) {
-        const sx = this.x + camera.x;
-        const sy = this.y + camera.y;
-
-        // Avant-Garde Aura (Glow Effect)
-        if (this.isSelected) {
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = this.color;
-        }
-
-        // Komutan Gövdesi
-        ctx.beginPath();
-        ctx.arc(sx, sy, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
-        ctx.fill();
-        ctx.shadowBlur = 0; // Reset shadow
-
-        // İsim Etiketi
-        ctx.fillStyle = "white";
-        ctx.font = "bold 10px Inter, sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(this.name.toUpperCase(), sx, sy - 25);
-        
-        // Seçim Halkası
-        if (this.isSelected) {
-            ctx.strokeStyle = "white";
-            ctx.lineWidth = 3;
-            ctx.stroke();
-        }
-    }
-}
-
-// 3. CORE ENGINE (Integrated)
-class GameEngine {
-    constructor(canvasId) {
-        this.canvas = document.getElementById(canvasId);
-        this.ctx = this.canvas.getContext('2d');
+class Game3D {
+    constructor() {
         this.units = [];
-        this.camera = { x: 0, y: 0, isDragging: false, lx: 0, ly: 0 };
-        this.init();
+        this.selectedUnit = null;
+        this.initScene();
+        this.initLights();
+        this.createGround();
+        this.spawnCommanders();
+        this.setupEvents();
+        this.animate();
     }
 
-    init() {
-        this.resize();
-        this.setupInput();
-        
-        // Sahneye Komutanları Diz
-        let i = 0;
-        for (const key in COMMANDERS) {
-            this.units.push(new Unit(i, 150 + (i * 100), 300, key));
-            i++;
+    initScene() {
+        // Scene, Camera, Renderer setup
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x050505);
+        this.scene.fog = new THREE.Fog(0x050505, 10, 50);
+
+        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        this.camera.position.set(0, 15, 15); // RoK stili üstten bakış
+        this.camera.lookAt(0, 0, 0);
+
+        this.renderer = new THREE.WebGLRenderer({ 
+            canvas: document.getElementById('gameCanvas'),
+            antialias: true 
+        });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(window.devicePixelRatio);
+    }
+
+    initLights() {
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        this.scene.add(ambientLight);
+
+        const sunLight = new THREE.DirectionalLight(0xffffff, 1);
+        sunLight.position.set(10, 20, 10);
+        this.scene.add(sunLight);
+    }
+
+    createGround() {
+        // Dev harita gridi
+        const grid = new THREE.GridHelper(100, 50, 0x333333, 0x111111);
+        this.scene.add(grid);
+
+        const geometry = new THREE.PlaneGeometry(100, 100);
+        const material = new THREE.MeshPhongMaterial({ color: 0x0a0a0a });
+        const ground = new THREE.Mesh(geometry, material);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        this.scene.add(ground);
+    }
+
+    spawnCommanders() {
+        let index = 0;
+        for (const key in COMMANDER_DATA) {
+            const data = COMMANDER_DATA[key];
+            
+            // 3D Temsil: Komutanları şimdilik silindir/koni olarak oluşturuyoruz
+            const geometry = new THREE.ConeGeometry(0.5, 2, 8);
+            const material = new THREE.MeshPhongMaterial({ color: data.color });
+            const mesh = new THREE.Mesh(geometry, material);
+            
+            mesh.position.set(index * 3 - 7, 1, 0);
+            mesh.userData = { ...data, target: mesh.position.clone() };
+            
+            this.scene.add(mesh);
+            this.units.push(mesh);
+            index++;
         }
-        
-        this.run();
     }
 
-    resize() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-    }
+    setupEvents() {
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
 
-    setupInput() {
-        this.canvas.onmousedown = (e) => {
-            this.camera.isDragging = true;
-            this.camera.lx = e.clientX;
-            this.camera.ly = e.clientY;
+        // Tıklama ile Seçme ve Hareket
+        window.addEventListener('mousedown', (e) => {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
 
-            // Seçim Kontrolü
-            const wx = e.clientX - this.camera.x;
-            const wy = e.clientY - this.camera.y;
-            this.units.forEach(u => {
-                const d = Math.sqrt((u.x - wx)**2 + (u.y - wy)**2);
-                u.isSelected = d < u.radius;
-            });
-        };
+            raycaster.setFromCamera(mouse, this.camera);
+            const intersects = raycaster.intersectObjects(this.scene.children);
 
-        window.onmousemove = (e) => {
-            if (this.camera.isDragging) {
-                this.camera.x += e.clientX - this.camera.lx;
-                this.camera.y += e.clientY - this.camera.ly;
-                this.camera.lx = e.clientX;
-                this.camera.ly = e.clientY;
-            }
-        };
-
-        window.onmouseup = () => this.camera.isDragging = false;
-
-        // Sağ Tık: Hareket Emri
-        this.canvas.oncontextmenu = (e) => {
-            e.preventDefault();
-            this.units.forEach(u => {
-                if (u.isSelected) {
-                    u.targetX = e.clientX - this.camera.x;
-                    u.targetY = e.clientY - this.camera.y;
+            if (intersects.length > 0) {
+                const clicked = intersects[0];
+                
+                if (e.button === 0) { // Sol Tık: Seçim
+                    this.units.forEach(u => u.scale.set(1, 1, 1)); // Reset
+                    const unit = this.units.find(u => u === clicked.object);
+                    if (unit) {
+                        this.selectedUnit = unit;
+                        unit.scale.set(1.5, 1.5, 1.5); // Seçim efekti
+                    }
+                } else if (e.button === 2 && this.selectedUnit) { // Sağ Tık: Hedef
+                    this.selectedUnit.userData.target.copy(clicked.point);
                 }
-            });
-        };
+            }
+        });
+
+        window.addEventListener('contextmenu', e => e.preventDefault());
+        window.addEventListener('resize', () => {
+            this.camera.aspect = window.innerWidth / window.innerHeight;
+            this.camera.updateProjectionMatrix();
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     }
 
-    render() {
-        this.ctx.fillStyle = "#0a0a0a";
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-        // Minimalist Grid
-        this.ctx.strokeStyle = "rgba(255,255,255,0.05)";
-        for(let x = this.camera.x % 50; x < this.canvas.width; x += 50) {
-            this.ctx.beginPath(); this.ctx.moveTo(x, 0); this.ctx.lineTo(x, this.canvas.height); this.ctx.stroke();
-        }
-        for(let y = this.camera.y % 50; y < this.canvas.height; y += 50) {
-            this.ctx.beginPath(); this.ctx.moveTo(0, y); this.ctx.lineTo(this.canvas.width, y); this.ctx.stroke();
-        }
-
-        this.units.forEach(u => { u.update(); u.draw(this.ctx, this.camera); });
-        
-        requestAnimationFrame(() => this.render());
+    updateUnits() {
+        this.units.forEach(unit => {
+            const data = unit.userData;
+            const dist = unit.position.distanceTo(data.target);
+            
+            if (dist > 0.1) {
+                const direction = new THREE.Vector3()
+                    .subVectors(data.target, unit.position)
+                    .normalize();
+                
+                unit.position.addScaledVector(direction, data.speed);
+                unit.lookAt(data.target); // Gittiği yöne bak
+                unit.rotation.x = 0; // Koni düz kalsın
+            }
+        });
     }
 
-    run() { requestAnimationFrame(() => this.render()); }
+    animate() {
+        requestAnimationFrame(() => this.animate());
+        this.updateUnits();
+        this.renderer.render(this.scene, this.camera);
+    }
 }
 
-new GameEngine('gameCanvas');
+// BAŞLAT
+window.onload = () => new Game3D();
