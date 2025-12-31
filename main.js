@@ -1,30 +1,36 @@
 /**
- * ROK CLONE 3D - ULTIMATE ENGINE
- * Version: 2.0 (Three.js & UI Sync)
+ * ROK CLONE 3D - ENGINE v2.5 (UI BRIDGE)
+ * Role: Senior Frontend Architect
  */
 
 const COMMANDER_DATA = {
-    MURAT: { name: "Murat", color: 0xef4444, skill: "Piyade Ustası", speed: 0.15 },
-    CANSU: { name: "Cansu", color: 0xec4899, skill: "Hızlı Akıncı", speed: 0.25 },
-    GOKDENIZ: { name: "Gökdeniz", color: 0x3b82f6, skill: "Kuşatma Uzmanı", speed: 0.10 },
-    SERIFE: { name: "Şerife", color: 0x10b981, skill: "Bilge Savunucu", speed: 0.18 },
-    CAN: { name: "Can", color: 0xf59e0b, skill: "Altın Lider", speed: 0.20 },
-    SAHILIN: { name: "Sahilin", color: 0x8b5cf6, skill: "Mistik Gözcü", speed: 0.22 }
+    MURAT: { name: "Murat", color: 0xef4444, skill: "Piyade Ustası", desc: "Piyade birliklerine %20 saldırı bonusu verir." },
+    CANSU: { name: "Cansu", color: 0xec4899, skill: "Hızlı Akıncı", desc: "Ordu hareket hızını %35 artırır." },
+    GOKDENIZ: { name: "Gökdeniz", color: 0x3b82f6, skill: "Kuşatma Uzmanı", desc: "Şehir surlarına verilen hasarı artırır." },
+    SERIFE: { name: "Şerife", color: 0x10b981, skill: "Bilge Savunucu", desc: "Gelen hasarı %15 oranında azaltır." },
+    CAN: { name: "Can", color: 0xf59e0b, skill: "Altın Lider", desc: "Toplanan kaynak miktarını %25 artırır." },
+    SAHILIN: { name: "Sahilin", color: 0x8b5cf6, skill: "Mistik Gözcü", desc: "Harita keşif menzilini iki katına çıkarır." }
 };
 
 class Game3D {
     constructor() {
         this.units = [];
         this.selectedUnit = null;
-        this.cameraZoom = 15;
+        this.loaderProgress = 0;
+        
         this.init();
     }
 
-    init() {
-        // Scene & Renderer
+    async init() {
+        // UI Elements
+        this.loader = document.getElementById('loader');
+        this.progressBar = document.getElementById('progress');
+        this.selectionCard = document.getElementById('selection-card');
+
+        // Three.js Core
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x050505);
-        this.scene.fog = new THREE.Fog(0x050505, 20, 100);
+        this.scene.fog = new THREE.Fog(0x050505, 20, 80);
 
         this.renderer = new THREE.WebGLRenderer({ 
             canvas: document.getElementById('gameCanvas'),
@@ -33,33 +39,48 @@ class Game3D {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(window.devicePixelRatio);
 
-        // Camera
         this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        this.updateCameraPosition();
+        this.camera.position.set(0, 20, 25);
+        this.camera.lookAt(0, 0, 0);
 
         // Lights
-        const amb = new THREE.AmbientLight(0xffffff, 0.6);
-        this.scene.add(amb);
-        const sun = new THREE.DirectionalLight(0xffffff, 1);
-        sun.position.set(5, 10, 7.5);
+        this.scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+        sun.position.set(10, 20, 10);
         this.scene.add(sun);
 
-        // World Construction
+        // Assets
         this.createWorld();
         this.spawnCommanders();
         this.setupInteractions();
-        this.animate();
+
+        // Simulate Loading
+        this.simulateLoading();
+    }
+
+    simulateLoading() {
+        const interval = setInterval(() => {
+            this.loaderProgress += Math.random() * 15;
+            this.progressBar.style.width = `${Math.min(this.loaderProgress, 100)}%`;
+
+            if (this.loaderProgress >= 100) {
+                clearInterval(interval);
+                this.loader.style.opacity = '0';
+                setTimeout(() => {
+                    this.loader.style.display = 'none';
+                    this.animate();
+                }, 500);
+            }
+        }, 100);
     }
 
     createWorld() {
-        // Infinite-like Grid
-        const grid = new THREE.GridHelper(200, 100, 0x444444, 0x222222);
+        const grid = new THREE.GridHelper(200, 50, 0x444444, 0x111111);
         this.scene.add(grid);
 
-        // Ground Plane
-        const planeGeo = new THREE.PlaneGeometry(200, 200);
-        const planeMat = new THREE.MeshPhongMaterial({ color: 0x0a0a0a });
-        const ground = new THREE.Mesh(planeGeo, planeMat);
+        const groundGeo = new THREE.PlaneGeometry(500, 500);
+        const groundMat = new THREE.MeshPhongMaterial({ color: 0x080808 });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
         ground.rotation.x = -Math.PI / 2;
         ground.name = "Ground";
         this.scene.add(ground);
@@ -69,12 +90,17 @@ class Game3D {
         let i = 0;
         for (const key in COMMANDER_DATA) {
             const data = COMMANDER_DATA[key];
-            // Avant-Garde Octahedron Shape for Commanders
-            const geo = new THREE.OctahedronGeometry(0.8);
-            const mat = new THREE.MeshPhongMaterial({ color: data.color, emissive: data.color, emissiveIntensity: 0.2 });
+            const geo = new THREE.IcosahedronGeometry(1.2, 0);
+            const mat = new THREE.MeshStandardMaterial({ 
+                color: data.color, 
+                roughness: 0.3, 
+                metalness: 0.8,
+                emissive: data.color,
+                emissiveIntensity: 0.2
+            });
             const mesh = new THREE.Mesh(geo, mat);
             
-            mesh.position.set(i * 4 - 10, 1, 0);
+            mesh.position.set(i * 6 - 15, 1.5, 0);
             mesh.userData = { ...data, target: mesh.position.clone() };
             mesh.name = "Unit_" + key;
             
@@ -82,11 +108,6 @@ class Game3D {
             this.units.push(mesh);
             i++;
         }
-    }
-
-    updateCameraPosition() {
-        this.camera.position.set(0, this.cameraZoom, this.cameraZoom * 0.8);
-        this.camera.lookAt(0, 0, 0);
     }
 
     setupInteractions() {
@@ -99,64 +120,79 @@ class Game3D {
             raycaster.setFromCamera(mouse, this.camera);
 
             const intersects = raycaster.intersectObjects(this.scene.children);
+            
             if (intersects.length > 0) {
                 const obj = intersects[0].object;
                 
-                if (e.button === 0) { // Sol Tık: SEÇİM
+                if (e.button === 0) { // LEFT CLICK: SELECT
                     if (obj.name.startsWith("Unit_")) {
-                        this.selectUnit(obj);
+                        this.selectCommander(obj);
+                    } else {
+                        this.deselect();
                     }
-                } else if (e.button === 2 && this.selectedUnit) { // Sağ Tık: HAREKET
-                    const groundPoint = intersects.find(i => i.object.name === "Ground");
-                    if (groundPoint) {
-                        this.selectedUnit.userData.target.copy(groundPoint.point);
-                        this.selectedUnit.userData.target.y = 1; // Havada kalmasın
+                } else if (e.button === 2 && this.selectedUnit) { // RIGHT CLICK: MOVE
+                    const ground = intersects.find(i => i.object.name === "Ground");
+                    if (ground) {
+                        this.selectedUnit.userData.target.copy(ground.point);
+                        this.selectedUnit.userData.target.y = 1.5;
                     }
                 }
             }
         });
 
-        // Zoom Kontrolü
-        window.addEventListener('wheel', (e) => {
-            this.cameraZoom = Math.max(5, Math.min(50, this.cameraZoom + e.deltaY * 0.05));
-            this.updateCameraPosition();
-        });
-
         window.addEventListener('contextmenu', e => e.preventDefault());
+        window.addEventListener('resize', () => {
+            this.camera.aspect = window.innerWidth / window.innerHeight;
+            this.camera.updateProjectionMatrix();
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     }
 
-    selectUnit(unit) {
-        // Reset old selection
+    selectCommander(unit) {
         this.units.forEach(u => {
             u.scale.set(1, 1, 1);
             u.material.emissiveIntensity = 0.2;
         });
 
         this.selectedUnit = unit;
-        unit.scale.set(1.4, 1.4, 1.4);
+        unit.scale.set(1.5, 1.5, 1.5);
         unit.material.emissiveIntensity = 1;
 
-        // UI SYNC
-        document.getElementById('selected-name').innerText = unit.userData.name.toUpperCase();
-        document.getElementById('selected-name').style.color = `#${unit.material.color.getHexString()}`;
-        document.getElementById('selected-skill').innerText = unit.userData.skill;
+        // UI Update & Animation
+        document.getElementById('commander-name').innerText = unit.userData.name.toUpperCase();
+        document.getElementById('commander-name').style.color = `#${unit.material.color.getHexString()}`;
+        document.getElementById('commander-skill').innerText = unit.userData.desc;
+        this.selectionCard.classList.remove('translate-y-32');
+        this.selectionCard.classList.add('translate-y-0');
+
+        // Update Coords UI
+        document.getElementById('coords-ui').innerText = `X: ${Math.round(unit.position.x)}, Z: ${Math.round(unit.position.z)}`;
+    }
+
+    deselect() {
+        this.selectedUnit = null;
+        this.units.forEach(u => u.scale.set(1, 1, 1));
+        this.selectionCard.classList.add('translate-y-32');
+        this.selectionCard.classList.remove('translate-y-0');
     }
 
     animate() {
         requestAnimationFrame(() => this.animate());
-        
+
         this.units.forEach(unit => {
             const data = unit.userData;
             const dist = unit.position.distanceTo(data.target);
             if (dist > 0.1) {
                 const dir = new THREE.Vector3().subVectors(data.target, unit.position).normalize();
-                unit.position.addScaledVector(dir, data.speed);
-                unit.rotation.y += 0.05; // Hareket ederken dönsün (Görsel efekt)
+                unit.position.addScaledVector(dir, 0.15);
+                unit.rotation.y += 0.02;
             }
+            // Hover effect
+            unit.position.y = 1.5 + Math.sin(Date.now() * 0.002) * 0.2;
         });
 
         this.renderer.render(this.scene, this.camera);
     }
 }
 
-new Game3D();
+window.onload = () => new Game3D();
